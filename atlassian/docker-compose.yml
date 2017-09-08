@@ -1,0 +1,65 @@
+
+version: '2'
+
+services:
+
+#
+# Using Postgres as Jira database. 
+#
+  jiradb:
+    image: postgres:9.4
+    container_name: jiradb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=chadrox
+    networks:
+      - jira
+#
+# JIRA itself
+#
+# if you mount installation directory, /opt/atlassian, harder to update jira version
+# Default JIRA application home directory = /var/atlassian/jira
+#
+  jira7:
+    image: cptactionhank/atlassian-jira-software:7.4.4
+    container_name: jira7
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./jira-home:/var/atlassian/jira
+      - /etc/timezone:/etc/timezone:ro
+    environment:
+      - X_PROXY_NAME=jira.example.com
+      - X_PROXY_PORT=443
+      - X_PROXY_SCHEME=https
+    depends_on:
+      - jiradb
+    networks:
+      - jira
+#
+# Bitbucket
+#
+  bitbucket5:
+    image: atlassian/bitbucket-server:5.2
+    container_name: bitbucket5
+    ports:
+      - "7990:7990"
+      - "7999:7999"  # only needed for ssh access to server, 
+    volumes:
+      - ./bitbucket-home:/var/atlassian/application-data/bitbucket
+      - /etc/timezone:/etc/timezone:ro
+    environment:
+      - SERVER_PROXY_NAME=git.example.com
+      - SERVER_PROXY_PORT=443
+      - SERVER_SCHEME=https
+      - SERVER_SECURE=true
+    depends_on:
+      - jiradb
+      - jira7
+    networks:
+      - jira
+networks:
+  jira:
