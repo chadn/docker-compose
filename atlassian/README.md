@@ -10,20 +10,46 @@ The goal of this docker-compose.yml file is to easily manage several atlassian a
 
 When done, you will have your own local running versions of Jira software (Jira core + agile) and Bitbucket server. Optionally you can runa second copy of Jira and  for testing plugins, updates, etc.  
 
-JIRA
 Note Jira is free for 30 days, then to continue you pay $10 once for Jira, $10 for Bitbucket, which covers up to 10 users.
 
 ## Background
 
-Previously I had to use github.com to view my private repositories from a web browser. Now I can easily fire up this setup.  I use Jira, Bitbucket, and Postgres db, but you could easily add confluence and bamboo to this list.
+Previously I had to use github.com to view my private repositories from a web browser. Now I can easily accomplish that using this setup instead.  I use Jira, Bitbucket, and Postgres db, but you could easily add confluence and bamboo to this list.
 
-Initial setup of Jira and Bitbucket can take some time if you've never done it before.  But if you have experience with that, this should be easy.  Once configured, this is an extremely portable setup.  All containers can talking to each other, and its easy to bring the whole thing up and down for backups, restores, testing upgrades, etc. 
+Initial setup of Jira and Bitbucket can take some time if you've never done it before.  But if you have experience with that, this should be easy.  Once configured, this is an extremely portable setup.  All containers can talk to each other, and its easy to bring the whole thing up and down for backups, restores, testing upgrades, etc. 
+
+
+## Initial Docker Setup
+
+You will need to edit [.env](.env) and optionally [test/.env](test/.env) files so they contain your domain names, ports that match your apache setup, etc.  
+
+```
+git clone https://github.com/chadn/docker-compose
+cd docker-compose/atlassian
+vi .env
+vi test/.env
+docker-compose up -d
+```
+If you haven't configured reverse proxy yet, do that now - see my notes below.  Then go to your browser to complete the setup of jira and bitbucket.  Remember to set up jira with postgres db.
+
+You can verify the services started ok using `docker-compose logs | grep <service-name>`.  For example, to make sure there were no errors in jira, you can do `docker-compose logs | grep jira7 | grep ERROR`.  Or here's an example of checking jira db 
+
+```
+[13:36 root@server atlassian] > docker-compose logs |grep jiradb
+Attaching to prod_bitbucket5, prod_jira7, prod_jiradb
+prod_jiradb   | LOG:  database system was shut down at 2017-09-09 17:06:24 UTC
+prod_jiradb   | LOG:  MultiXact member wraparound protections are now enabled
+prod_jiradb   | LOG:  database system is ready to accept connections
+prod_jiradb   | LOG:  autovacuum launcher started
+prod_jira7    |          Database URL                                  : jdbc:postgresql://192.168.1.1:55432/jiradb
+prod_jira7    |          Database JDBC config                          : postgres72 jdbc:postgresql://192.168.1.1:55432/jiradb
+```
 
 ## Reverse Proxy, domains, and SSL certificates
 
 I already have apache set up with ssl certificates, so I'm using that - more details on that setup in my [Apache and Jira dockers](https://chadnorwood.com/2017/09/08/apache-virtual-hosts-https-and-jira-docker-containers/) post.   
 
-If you prefer a docker-compose that includes a proxy and certs, you can look at [this idalko docker-builder post](https://idalko.com/atlassian-jira-upgrade-journey-using-docker-and-the-atlassian-docker-builder/). I attempted this, but had some errors while trying to build the atlassian containers using [atlassian-docker-builder](https://bitbucket.org/adockers/atlassian-docker-builder/overview).
+If you prefer a docker-compose that includes a service for proxy and certs, you can look at [this idalko docker-builder post](https://idalko.com/atlassian-jira-upgrade-journey-using-docker-and-the-atlassian-docker-builder/). I attempted this, but had some errors while trying to build the atlassian containers using [atlassian-docker-builder](https://bitbucket.org/adockers/atlassian-docker-builder/overview).
 
 Examples from my Apache conf files
 
@@ -97,35 +123,9 @@ CustomLog ${APACHE_LOG_DIR}/access.vhosts.log vhost_combined2
 ErrorLog ${APACHE_LOG_DIR}/error.log
 ```
 
-## Initial Docker Setup
-
-You will need to edit [.env](.env) and optionally [test/.env](test/.env) files so they contain your domain names, ports that match your apache setup, etc.  
-
-```
-git clone https://github.com/chadn/docker-compose
-cd docker-compose/atlassian
-vi .env
-vi test/.env
-docker-compose up -d
-```
-Go to your browser to complete the setup of jira and bitbucket.  Remember to set up jira with postgres db.
-
-You can see verify the services started ok using `docker-compose logs | grep <service-name>`.  For example, to make sure there were no errors in jira, you can do `docker-compose logs | grep jira7 | grep ERROR`.  Or here's an example of checking jira db 
-
-```
-[13:36 root@server atlassian] > docker-compose logs |grep jiradb
-Attaching to prod_bitbucket5, prod_jira7, prod_jiradb
-prod_jiradb   | LOG:  database system was shut down at 2017-09-09 17:06:24 UTC
-prod_jiradb   | LOG:  MultiXact member wraparound protections are now enabled
-prod_jiradb   | LOG:  database system is ready to accept connections
-prod_jiradb   | LOG:  autovacuum launcher started
-prod_jira7    |          Database URL                                  : jdbc:postgresql://192.168.1.1:55432/jiradb
-prod_jira7    |          Database JDBC config                          : postgres72 jdbc:postgresql://192.168.1.1:55432/jiradb
-```
-
 ## Test Setup
 
-Optionally you can set up test dockers as well, but since its trivial to do, best to do it while setting everything else up.  You don't need to use the test setup until you've completely set up the prod docker containers - prod is the prefix name in the .env file, short for production. 
+Optionally you can set up test dockers as well, but since it is trivial to do, it is best to do it while setting up everything else.  You don't need to use the test setup until you've completely set up the prod docker containers - prod is the prefix name in the [.env](.env) file, short for production. 
 
 The included [backup2test.sh](backup2test.sh) script will backup the prod docker containers to test docker containers, using the data in [test/.env](test/.env) file. It can be run as much as you want, but best to run it for the first time once the prod containers are set up and working fine. This backup will give your test environment a copy of your current jira project and issues, great for testing against your actual data. 
 
@@ -172,9 +172,9 @@ c2fb800e7998        cptactionhank/atlassian-jira-software:7.4.4   "/docker-entry
 
 Don't forget to change test GIT Base URL in admin settings as well as update any application links
 https://test-jira.example.com/secure/admin/ViewApplicationProperties.jspa
-https://test-git.norha.us/admin/server-settings
-https://test-git.norha.us/plugins/servlet/applinks/listApplicationLinks
-https://test-jira.norha.us/plugins/servlet/applinks/listApplicationLinks
+https://test-git.example.com/admin/server-settings
+https://test-git.example.com/plugins/servlet/applinks/listApplicationLinks
+https://test-jira.example.com/plugins/servlet/applinks/listApplicationLinks
 
 real 27.789 user 1.384  sys 1.704 pcpu 11.11
 ```
