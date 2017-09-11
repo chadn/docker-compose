@@ -1,20 +1,15 @@
-
 version: '2'
 
 services:
-
-#
-# Using Postgres as Jira database. 
-#
   jiradb:
     image: postgres:9.4
-    container_name: jiradb
+    container_name: ${DC_PREFIX}_jiradb
     ports:
-      - "5432:5432"
+      - "${DC_DB_PORT}:5432"
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=chadrox
+      - POSTGRES_PASSWORD=${DC_DB_PW}
     networks:
       - jira
 #
@@ -25,14 +20,15 @@ services:
 #
   jira7:
     image: cptactionhank/atlassian-jira-software:7.4.4
-    container_name: jira7
+    container_name: ${DC_PREFIX}_jira7
     ports:
-      - "8080:8080"
+      - "${DC_JIRA_PORT}:8080"
+    dns: 192.168.1.1
     volumes:
       - ./jira-home:/var/atlassian/jira
       - /etc/timezone:/etc/timezone:ro
     environment:
-      - X_PROXY_NAME=jira.example.com
+      - X_PROXY_NAME=${DC_JIRA_NAME}
       - X_PROXY_PORT=443
       - X_PROXY_SCHEME=https
     depends_on:
@@ -44,15 +40,16 @@ services:
 #
   bitbucket5:
     image: atlassian/bitbucket-server:5.2
-    container_name: bitbucket5
+    container_name: ${DC_PREFIX}_bitbucket5
     ports:
-      - "7990:7990"
-      - "7999:7999"  # only needed for ssh access to server, 
+      - "${DC_BITBUCKET_PORT}:7990"
+      - "${DC_SSH_PORT}:7999"
+    dns: 192.168.1.1
     volumes:
       - ./bitbucket-home:/var/atlassian/application-data/bitbucket
       - /etc/timezone:/etc/timezone:ro
     environment:
-      - SERVER_PROXY_NAME=git.example.com
+      - SERVER_PROXY_NAME=${DC_BITBUCKET_NAME}
       - SERVER_PROXY_PORT=443
       - SERVER_SCHEME=https
       - SERVER_SECURE=true
@@ -63,3 +60,4 @@ services:
       - jira
 networks:
   jira:
+
