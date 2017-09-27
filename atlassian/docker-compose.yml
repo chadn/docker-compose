@@ -11,7 +11,8 @@ services:
     environment:
       - POSTGRES_PASSWORD=${DC_DB_PW}
     networks:
-      - jira
+      - jira_network
+
 #
 # JIRA itself
 #
@@ -19,11 +20,10 @@ services:
 # Default JIRA application home directory = /var/atlassian/jira
 #
   jira7:
-    image: cptactionhank/atlassian-jira-software:7.4.4
+    image: cptactionhank/atlassian-jira-software:7.5.0
     container_name: ${DC_PREFIX}_jira7
     ports:
       - "${DC_JIRA_PORT}:8080"
-    dns: 192.168.1.1
     volumes:
       - ./jira-home:/var/atlassian/jira
       - /etc/timezone:/etc/timezone:ro
@@ -34,7 +34,7 @@ services:
     depends_on:
       - jiradb
     networks:
-      - jira
+      - jira_network
 #
 # Bitbucket
 #
@@ -44,7 +44,6 @@ services:
     ports:
       - "${DC_BITBUCKET_PORT}:7990"
       - "${DC_SSH_PORT}:7999"
-    dns: 192.168.1.1
     volumes:
       - ./bitbucket-home:/var/atlassian/application-data/bitbucket
       - /etc/timezone:/etc/timezone:ro
@@ -54,10 +53,9 @@ services:
       - SERVER_SCHEME=https
       - SERVER_SECURE=true
     depends_on:
-      - jiradb
       - jira7
     networks:
-      - jira
+      - jira_network
 networks:
-  jira:
+  jira_network:
 

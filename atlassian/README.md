@@ -127,13 +127,13 @@ ErrorLog ${APACHE_LOG_DIR}/error.log
 
 Optionally you can set up test dockers as well, but since it is trivial to do, it is best to do it while setting up everything else.  You don't need to use the test setup until you've completely set up the prod docker containers - prod is the prefix name in the [.env](.env) file, short for production. 
 
-The included [backup2test.sh](backup2test.sh) script will backup the prod docker containers to test docker containers, using the data in [test/.env](test/.env) file. It can be run as much as you want, but best to run it for the first time once the prod containers are set up and working fine. This backup will give your test environment a copy of your current jira project and issues, great for testing against your actual data. 
+The included [dc_utils.sh](dc_utils.sh) script will backup the prod docker containers to test docker containers, using the data in [test/.env](test/.env) file. It can be run as much as you want, but best to run it for the first time once the prod containers are set up and working fine. This backup will give your test environment a copy of your current jira project and issues, great for testing against your actual data. 
 
-For example, to test the latest Jira version, first run the backup2test.sh, then check the latest jira version available to the docker container by looking at [atlassian-jira-software tags](https://hub.docker.com/r/cptactionhank/atlassian-jira-software/tags/), edit test/docker-compose.yml to use that tag, then in test directory run `docker-compose down` then `docker-compose up -d`.
+For example, to test the latest Jira version, first run `dc_utils.sh backup`, then check the latest jira version available to the docker container by looking at [atlassian-jira-software tags](https://hub.docker.com/r/cptactionhank/atlassian-jira-software/tags/), edit test/docker-compose.yml to use that tag, then in test directory run `docker-compose down` then `docker-compose up -d`.
 
-Here's an example output from backup2test.sh
+Here's an example output
 ```
-[16:14 root@server docker-compose\atlassian] > time ./backup2test.sh
+[16:14 root@server docker-compose\atlassian] > time ./dc_utils.sh backup
 Stopping all docker containers, replacing all test dockers.
 Backup now (y/n)? y
 Proceding ...
@@ -150,14 +150,15 @@ Stopping prod_jiradb ... done
 Removing prod_bitbucket5 ... done
 Removing prod_jira7 ... done
 Removing prod_jiradb ... done
-Removing network atlassian_jira
-Creating network "atlassian_jira" with the default driver
+Removing network atlassian_jira_network
+Creating network "atlassian_jira_network" with the default driver
 Creating prod_jiradb
 Creating prod_jira7
 Creating prod_bitbucket5
-Changed port from 55432 to 15432 in test/jira-home/dbconfig.xml
-Creating network "test_jira" with the default driver
+Creating network "test_jira_network" with the default driver
 Creating test_jiradb
+Changing jira-home/dbconfig.xml to use jiradb IP: 172.20.0.2:5432
+test_jiradb is up-to-date
 Creating test_jira7
 Creating test_bitbucket5
 CONTAINER ID        IMAGE                                         COMMAND                  CREATED             STATUS                     PORTS                                              NAMES

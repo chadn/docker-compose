@@ -7,12 +7,11 @@ DC=`which docker-compose`
 usage()
 {
   cat <<- _EOF_
-    usage: backup2test [option]
+    usage: $0 [option]
 
-        all                     does everything - this is the default
-        backup                  shuts down prod containers, copies them to test, restarts.
-        updateports             updates test jira db config file
-        goodbye                 reminder URLs to address for test jira and bitbucket
+        backup           Does it all - shuts down prod containers, copies them to test, restarts. 
+        info             Reminder URLs to address for test jira and bitbucket
+        updatedb <dir>   Updates <dir>/jira-home/dbconfig.xml based on IP of jiradb
 
 _EOF_
 
@@ -23,11 +22,9 @@ all() {
   echo "Stopping all docker containers, replacing all test dockers."
   confirm
   backup
-  updateports
-  #updateTestJiraBaseUrl
-  cd test && $DC up -d && cd ..
+  setuptest
   docker ps -a
-  goodbye
+  infourls
 }
 
 # validate files exist
@@ -69,7 +66,59 @@ backup() {
 }
 
 
-updateports() {
+setuptest() {
+  cd test && $DC up -d jiradb
+  #updateTestJiraBaseUrl
+  updatedb
+  $DC up -d 
+  cd ..
+}
+
+# this should be called from host, in the same directory as .env and docker-compose.yml
+updatedb() {
+  local DIR=$1
+  local FN=jira-home/dbconfig.xml
+  if [[ "$DIR" != "" ]]; then
+    cd ${DIR}
+  fi
+  DC_PREFIX=$(grep DC_PREFIX .env |cut -d= -f2)
+  JIRADB_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${DC_PREFIX}_jiradb)
+  if [[ "$JIRADB_IP" == "" ]]; then
+    echo "Could not get jiradb IP - is it running ok?"
+    exit
+  fi
+
+  # now that we got IP, see if we need to update FN
+  grep "postgresql://${JIRADB_IP}:5432/" ${FN}
+  CMD_RC=$?
+  if [[ "$CMD_RC" != "0" ]]; then
+    echo "Changing ${FN} to use jiradb IP: ${JIRADB_IP}:5432"
+    sed -i "s@postgresql://[^\/]*/@postgresql://${JIRADB_IP}:5432/@" ${FN} 
+  else 
+    echo "NOT Changing ${FN}, already has correct jiradb IP: ${JIRADB_IP}:5432"
+  fi
+}
+
+# this should only be called from within container 
+# NOTE: not used, can't seem to change dbconfig.xml
+updatedb2() {
+  local FN=$1
+  #FN=/var/atlassian/jira/dbconfig.xml
+  JIRADB_IP=$(curl -v jiradb:5432 2>&1|grep Trying|sed 's/^.*Trying\s*//'|sed 's/[.]*$//') 
+  sed "s@postgresql://[^\/]*/@postgresql://${JIRADB_IP}:5432/@" <${FN} >${FN}.tmp
+  /usr/bin/diff ${FN}.tmp ${FN}
+  CMD_RC=$?
+  if [[ "$CMD_RC" != "0" ]]; then
+    echo "Changing dbconfig.xml to use jiradb IP: ${JIRADB_IP}:5432 ${FN}"
+    mv ${FN}.tmp ${FN}
+  else 
+    echo "Not Changing dbconfig.xml, already has correct jiradb IP: ${JIRADB_IP}:5432 ${FN}"
+    rm ${FN}.tmp
+  fi
+}
+
+# no longer used
+updatedbport() {
   FN=test/jira-home/dbconfig.xml
   TEST_DB_PORT=$(grep DC_DB_PORT test/.env |cut -d= -f2)
   OLD_DB_PORT=$(grep url ${FN}|cut -d/ -f3|cut -d: -f2)
@@ -107,7 +156,7 @@ updateTestJiraBaseUrl() {
   cd ..
 }
 
-goodbye() {
+infourls() {
   TEST_JIRA=$(grep DC_JIRA_NAME     test/.env |cut -d= -f2)
   TEST_GIT=$(grep DC_BITBUCKET_NAME test/.env |cut -d= -f2)
   echo 
@@ -144,13 +193,14 @@ DCrunning() {
 
 #while [ "$1" != "" ]; do
 if [ "$1" == "" ]; then
-  all
+  usage 
 else
   case $1 in
     updateTestJiraBaseUrl ) updateTestJiraBaseUrl;;
-    backup )                backup;;
-    updateports )           updateports;;
-    goodbye )               goodbye;;
+    updatedb )              updatedb $2;;
+    info )                  infourls;;
+    setuptest )             setuptest;;
+    backup )                all;;
     all )                   all;;
     * )                     usage
                             exit 1
