@@ -62,7 +62,9 @@ backup() {
     rm -rf test/$dir
     cp -a $dir test
   done
-  $DC up -d
+  $DC up -d jiradb
+  updatedb
+  $DC up -d 
 }
 
 

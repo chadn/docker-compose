@@ -153,6 +153,8 @@ Removing prod_jiradb ... done
 Removing network atlassian_jira_network
 Creating network "atlassian_jira_network" with the default driver
 Creating prod_jiradb
+Changing jira-home/dbconfig.xml to use jiradb IP: 172.19.0.2:5432
+prod_jiradb is up-to-date
 Creating prod_jira7
 Creating prod_bitbucket5
 Creating network "test_jira_network" with the default driver
