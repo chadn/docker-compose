@@ -101,33 +101,6 @@ updatedb() {
   fi
 }
 
-# this should only be called from within container 
-# NOTE: not used, can't seem to change dbconfig.xml
-updatedb2() {
-  local FN=$1
-  #FN=/var/atlassian/jira/dbconfig.xml
-  JIRADB_IP=$(curl -v jiradb:5432 2>&1|grep Trying|sed 's/^.*Trying\s*//'|sed 's/[.]*$//') 
-  sed "s@postgresql://[^\/]*/@postgresql://${JIRADB_IP}:5432/@" <${FN} >${FN}.tmp
-  /usr/bin/diff ${FN}.tmp ${FN}
-  CMD_RC=$?
-  if [[ "$CMD_RC" != "0" ]]; then
-    echo "Changing dbconfig.xml to use jiradb IP: ${JIRADB_IP}:5432 ${FN}"
-    mv ${FN}.tmp ${FN}
-  else 
-    echo "Not Changing dbconfig.xml, already has correct jiradb IP: ${JIRADB_IP}:5432 ${FN}"
-    rm ${FN}.tmp
-  fi
-}
-
-# no longer used
-updatedbport() {
-  FN=test/jira-home/dbconfig.xml
-  TEST_DB_PORT=$(grep DC_DB_PORT test/.env |cut -d= -f2)
-  OLD_DB_PORT=$(grep url ${FN}|cut -d/ -f3|cut -d: -f2)
-  $(sed -i "s|:${OLD_DB_PORT}/|:${TEST_DB_PORT}/|" ${FN})
-  echo "Changed port from ${OLD_DB_PORT} to ${TEST_DB_PORT} in $FN"
-}
-
 updateTestJiraBaseUrl() {
   TEST_JIRA=$(grep DC_JIRA_NAME     test/.env |cut -d= -f2)
   TEST_DB_PORT=$(grep DC_DB_PORT    test/.env |cut -d= -f2)
@@ -170,30 +143,6 @@ infourls() {
   echo 
 }
 
-DCrunning() {
-    # uncomment following to troubleshoot bash execution
-    #set -x
-    set -o pipefail
-
-    CMD="$DC ps | grep Up | wc -l"
-
-    eval CMD_OUTPUT=\`${CMD}\`
-    CMD_RC=$?
-    if [[ "$CMD_RC" != "0" ]]; then
-        echo "${PIPESTATUS[@]}"
-        printf "Aborting, cmd exited with non-zero ($CMD_RC)\n"
-        echo "${CMD}"
-        exit;
-    fi 
-    print $CMD_OUTPUT
-    #echo "CMD_OUTPUT=${CMD_OUTPUT}"
-    # uncomment following to troubleshoot bash execution
-    #set +x
-}
-
-#while [ "$1" != "" ]; do
-
-#while [ "$1" != "" ]; do
 if [ "$1" == "" ]; then
   usage 
 else
